@@ -134,7 +134,7 @@ app.get("/tweets/:tweetId/", async (request, response) => {
   const getFollowingQuery = `
     SELECT name
     FROM follower INNER JOIN user ON follower.follower_user_id = user.user_id
-    WHERE follower.following_user_id `;
+    WHERE follower.following_user_id ;`;
   const followingArray = await db.all(getFollowingQuery);
   if (followingArray === undefined) {
     response.status(401);
@@ -147,7 +147,7 @@ app.get("/tweets/:tweetId/", async (request, response) => {
                 count(like_id) AS likes
         FROM (tweet INNER JOIN reply ON tweet.tweet_id = reply.tweet_id) AS T
         INNER JOIN like ON like.tweet_id
-        WHERE tweet_id = ${tweetId}`;
+        WHERE tweet_id = ${tweetId};`;
     const tweetIdArray = await db.all(selectTweetIdQuery);
     response.send(tweetIdArray);
   }
