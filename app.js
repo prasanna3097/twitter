@@ -76,7 +76,7 @@ app.post("/login", async (request, response) => {
   }
 });
 
-app.get("/user/tweets/feed/", async (request, response) => {
+const authenticateToken = (request, response, next) => {
   let jwtToken;
   const authHeader = request.headers["authorization"];
   if (authHeader !== undefined) {
@@ -91,7 +91,14 @@ app.get("/user/tweets/feed/", async (request, response) => {
         response.status(401);
         response.send("Invalid Access Token");
       } else {
-        const selectedTweetQuery = `
+        next();
+      }
+    });
+  }
+};
+
+app.get("/user/tweets/feed/", authenticateToken, async (request, response) => {
+  const selectedTweetQuery = `
         SELECT T.username,
                 T.tweet,
                 T.date_time AS dateTime
@@ -100,9 +107,50 @@ app.get("/user/tweets/feed/", async (request, response) => {
         ORDER BY username
         LIMIT 4
         OFFSET 0;`;
-        const tweetArray = await db.all(selectedTweetQuery);
-        response.send(tweetArray);
-      }
-    });
+  const tweetArray = await db.all(selectedTweetQuery);
+  response.send(tweetArray);
+});
+
+app.get("/user/following/", async (request, response) => {
+  const getFollowingQuery = `
+    SELECT name
+    FROM follower INNER JOIN user ON follower.follower_user_id = user.user_id
+    WHERE follower.following_user_id `;
+  const followingArray = await db.all(getFollowingQuery);
+  response.send(followingArray);
+});
+
+app.get("/user/followers/", async (request, response) => {
+  const getFollowerQuery = `
+    SELECT name
+    FROM follower INNER JOIN user ON follower.following_user_id = user.user_id
+    WHERE follower.follower_user_id `;
+  const followerArray = await db.all(getFollowerQuery);
+  response.send(followerArray);
+});
+
+app.get("/tweets/:tweetId/", async (request, response) => {
+  const { tweetId } = request.params;
+  const getFollowingQuery = `
+    SELECT name
+    FROM follower INNER JOIN user ON follower.follower_user_id = user.user_id
+    WHERE follower.following_user_id `;
+  const followingArray = await db.all(getFollowingQuery);
+  if (followingArray === undefined) {
+    response.status(401);
+    response.send("Invalid Request");
+  } else {
+    const selectTweetIdQuery = `
+        SELECT T.tweet
+                T.reply AS replies,
+                T.date_time AS dateTime,
+                count(like_id) AS likes
+        FROM (tweet INNER JOIN reply ON tweet.tweet_id = reply.tweet_id) AS T
+        INNER JOIN like ON like.tweet_id
+        WHERE tweet_id = ${tweetId}`;
+    const tweetIdArray = await db.all(selectTweetIdQuery);
+    response.send(tweetIdArray);
   }
 });
+
+module.exports = app;
